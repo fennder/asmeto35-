@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "Permanent athlete profile and accumulated public football statistics.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "position": { "type": "string", "enum": ["Goleiro", "Defesa", "Meio", "Atacante", "Versátil"] },
+        "photoDataUrl": { "type": "string", "maxLength": 180000 },
+        "goals": { "type": "integer" },
+        "assists": { "type": "integer" },
+        "yellowCards": { "type": "integer" },
+        "blueCards": { "type": "integer" },
+        "redCards": { "type": "integer" },
+        "wins": { "type": "integer" },
+        "matchesPlayed": { "type": "integer" },
+        "visibility": { "type": "string", "enum": ["public"] },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "name",
+        "position",
+        "photoDataUrl",
+        "goals",
+        "assists",
+        "yellowCards",
+        "blueCards",
+        "redCards",
+        "wins",
+        "matchesPlayed",
+        "visibility",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PeladaSession": {
+      "title": "PeladaSession",
+      "description": "A Pelada matchday session with confirmed athletes, teams, waiting queue, live match state, and history.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "dateLabel": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "status": { "type": "string", "enum": ["open", "live", "finished"] },
+        "playersPerTeam": { "type": "integer" },
+        "matchDurationSeconds": { "type": "integer" },
+        "punishmentDurationSeconds": { "type": "integer" },
+        "maxWinStreak": { "type": "integer" },
+        "drawDone": { "type": "boolean" },
+        "confirmedPlayerIds": { "type": "array" },
+        "registeredOrderIds": { "type": "array" },
+        "teamA": { "type": "array" },
+        "teamB": { "type": "array" },
+        "teamAStreak": { "type": "integer" },
+        "teamBStreak": { "type": "integer" },
+        "waitingQueue": { "type": "array" },
+        "latePriorityIds": { "type": "array" },
+        "matchesCompleted": { "type": "integer" },
+        "currentMatch": { "type": "object" },
+        "matchHistory": { "type": "array" },
+        "visibility": { "type": "string", "enum": ["public"] },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "name",
+        "dateLabel",
+        "status",
+        "playersPerTeam",
+        "matchDurationSeconds",
+        "punishmentDurationSeconds",
+        "maxWinStreak",
+        "drawDone",
+        "confirmedPlayerIds",
+        "registeredOrderIds",
+        "teamA",
+        "teamB",
+        "teamAStreak",
+        "teamBStreak",
+        "waitingQueue",
+        "latePriorityIds",
+        "matchesCompleted",
+        "currentMatch",
+        "matchHistory",
+        "visibility",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/players/{playerId}": {
+      "schema": { "$ref": "#/entities/Player" },
+      "description": "Public athlete database with career statistics and compressed camera photo."
+    },
+    "/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/PeladaSession" },
+      "description": "Public Pelada sessions containing confirmed rosters, draw state, waiting queue, live match state, and match history."
+    },
+    "/admins/{userId}": {
+      "schema": "AdminRole",
+      "description": "Authorized Pelada ASMETO managers."
+    }
+  }
+}

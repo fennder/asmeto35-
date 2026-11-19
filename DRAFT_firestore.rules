@@ -1,0 +1,184 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedEmail() && (
+        request.auth.token.email == 'edir.developer@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidStringList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is string);
+    }
+
+    function isValidPlayer(data) {
+      return data.keys().hasAll([
+        'id', 'name', 'position', 'photoDataUrl',
+        'goals', 'assists', 'yellowCards', 'blueCards', 'redCards',
+        'wins', 'matchesPlayed', 'visibility', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'name', 'position', 'photoDataUrl',
+        'goals', 'assists', 'yellowCards', 'blueCards', 'redCards',
+        'wins', 'matchesPlayed', 'visibility', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+      data.position is string && data.position in ['Goleiro', 'Defesa', 'Meio', 'Atacante', 'Versátil'] &&
+      data.photoDataUrl is string && data.photoDataUrl.size() <= 180000 &&
+      data.goals is int && data.goals >= 0 && data.goals <= 10000 &&
+      data.assists is int && data.assists >= 0 && data.assists <= 10000 &&
+      data.yellowCards is int && data.yellowCards >= 0 && data.yellowCards <= 5000 &&
+      data.blueCards is int && data.blueCards >= 0 && data.blueCards <= 5000 &&
+      data.redCards is int && data.redCards >= 0 && data.redCards <= 5000 &&
+      data.wins is int && data.wins >= 0 && data.wins <= 10000 &&
+      data.matchesPlayed is int && data.matchesPlayed >= 0 && data.matchesPlayed <= 20000 &&
+      data.visibility == 'public' &&
+      isValidId(data.createdBy) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll([
+        'id', 'name', 'dateLabel', 'status', 'playersPerTeam',
+        'matchDurationSeconds', 'punishmentDurationSeconds', 'maxWinStreak',
+        'drawDone', 'confirmedPlayerIds', 'registeredOrderIds',
+        'teamA', 'teamB', 'teamAStreak', 'teamBStreak',
+        'waitingQueue', 'latePriorityIds', 'matchesCompleted',
+        'currentMatch', 'matchHistory', 'visibility', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'name', 'dateLabel', 'status', 'playersPerTeam',
+        'matchDurationSeconds', 'punishmentDurationSeconds', 'maxWinStreak',
+        'drawDone', 'confirmedPlayerIds', 'registeredOrderIds',
+        'teamA', 'teamB', 'teamAStreak', 'teamBStreak',
+        'waitingQueue', 'latePriorityIds', 'matchesCompleted',
+        'currentMatch', 'matchHistory', 'visibility', 'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+      data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 40 &&
+      data.status is string && data.status in ['open', 'live', 'finished'] &&
+      data.playersPerTeam is int && data.playersPerTeam >= 1 && data.playersPerTeam <= 11 &&
+      data.matchDurationSeconds is int && data.matchDurationSeconds >= 60 && data.matchDurationSeconds <= 5400 &&
+      data.punishmentDurationSeconds is int && data.punishmentDurationSeconds >= 15 && data.punishmentDurationSeconds <= 600 &&
+      data.maxWinStreak is int && data.maxWinStreak >= 1 && data.maxWinStreak <= 10 &&
+      data.drawDone is bool &&
+      isValidStringList(data.confirmedPlayerIds, 100) &&
+      isValidStringList(data.registeredOrderIds, 100) &&
+      isValidStringList(data.teamA, 20) &&
+      isValidStringList(data.teamB, 20) &&
+      data.teamAStreak is int && data.teamAStreak >= 0 && data.teamAStreak <= 10 &&
+      data.teamBStreak is int && data.teamBStreak >= 0 && data.teamBStreak <= 10 &&
+      isValidStringList(data.waitingQueue, 100) &&
+      isValidStringList(data.latePriorityIds, 100) &&
+      data.matchesCompleted is int && data.matchesCompleted >= 0 && data.matchesCompleted <= 200 &&
+      data.currentMatch is map &&
+      data.matchHistory is list && data.matchHistory.size() <= 100 &&
+      data.visibility == 'public' &&
+      isValidId(data.createdBy) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    match /players/{playerId} {
+      allow get: if isValidId(playerId) && existing().visibility == 'public';
+      allow list: if resource.data.visibility == 'public';
+      allow create: if isSignedIn() && isVerifiedEmail() && isValidId(playerId) &&
+        isValidPlayer(incoming()) &&
+        incoming().id == playerId &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isVerifiedEmail() && isValidId(playerId) &&
+        isValidPlayer(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'goals', 'assists', 'yellowCards', 'blueCards', 'redCards',
+            'wins', 'matchesPlayed', 'updatedAt'
+          ]) ||
+          (existing().createdBy == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'position', 'photoDataUrl', 'updatedAt'
+          ]))
+        );
+      allow delete: if isSignedIn() && isVerifiedEmail() && isValidId(playerId) &&
+        (existing().createdBy == request.auth.uid || isAdmin());
+    }
+
+    match /sessions/{sessionId} {
+      allow get: if isValidId(sessionId) && existing().visibility == 'public';
+      allow list: if resource.data.visibility == 'public';
+      allow create: if isSignedIn() && isVerifiedEmail() && isValidId(sessionId) &&
+        isValidSession(incoming()) &&
+        incoming().id == sessionId &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isVerifiedEmail() && isValidId(sessionId) &&
+        isValidSession(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (existing().status != 'finished' || isAdmin()) &&
+        (
+          isAdmin() ||
+          existing().createdBy == request.auth.uid ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'confirmedPlayerIds', 'registeredOrderIds', 'waitingQueue', 'latePriorityIds', 'updatedAt'
+          ]) ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'drawDone', 'teamA', 'teamB', 'teamAStreak', 'teamBStreak',
+            'waitingQueue', 'latePriorityIds', 'matchesCompleted',
+            'currentMatch', 'matchHistory', 'confirmedPlayerIds', 'registeredOrderIds', 'updatedAt'
+          ])
+        );
+      allow delete: if isSignedIn() && isVerifiedEmail() && isValidId(sessionId) &&
+        (existing().createdBy == request.auth.uid || isAdmin());
+    }
+
+    match /admins/{userId} {
+      allow get: if isSignedIn() && isVerifiedEmail() && isValidId(userId) && request.auth.uid == userId;
+      allow list, write: if false;
+    }
+
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+      allow list, write: if false;
+    }
+  }
+}

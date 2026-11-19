@@ -1,0 +1,6 @@
+{
+  "name": "Pelada ASMETO",
+  "description": "Gestão mobile-first de partidas de futebol society com sorteio automático, fila de espera com prioridade, cronômetro em tempo real, punições e ranking público.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
